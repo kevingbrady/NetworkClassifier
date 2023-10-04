@@ -1,10 +1,11 @@
 import psutil
+import time
 from scapy.all import *
 from scapy.layers.inet import IP, TCP, UDP
 
 from src.PacketCounter import PacketCounter
 from src.FlowMeterMetrics import FlowMeterMetrics
-
+from src.utils import pretty_time_delta
 
 class Sniffer:
 
@@ -29,9 +30,14 @@ class Sniffer:
 
     def run(self):
 
-        sniffer = AsyncSniffer(iface=self.ifaces, prn=self.process_packet, store=False)
-        sniffer.start()
-        sniffer.join()
+        try:
+            sniffer = AsyncSniffer(iface=self.ifaces, prn=self.process_packet, store=False)
+            sniffer.start()
+            sniffer.join()
+
+        except KeyboardInterrupt:
+            elapsed_time = time.time() - self.counter.get_start_time()
+            print("Sniffed %d packets in %s" % (self.counter.get_packet_count_total(), pretty_time_delta(elapsed_time)))
 
     def process_packet(self, pkt):
         if IP not in pkt:
