@@ -10,3 +10,10 @@ def pretty_time_delta(seconds):
         return '%dm %.2fs' % (minutes, seconds)
     else:
         return '%.2fs' % seconds
+
+
+def normalize(x, method):
+    if method == 'l2':
+        return (x - x.min()) / (x.max() - x.min()) if (x.max() - x.min()) else 0.0
+    elif method == 'zscore':
+        return (x - x.mean()) / x.std(ddof=0) if x.std(ddof=0) else 0.0
