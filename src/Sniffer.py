@@ -17,6 +17,7 @@ from src.utils import pretty_time_delta, normalize
 MODEL_FILEPATH = '/home/kgb/PycharmProjects/TensorFlowPcap/src/models/decision_tree/random_forest/RandomForestModel'
 # MODEL_FILEPATH = '/home/kgb/PycharmProjects/TensorFlowPcap/src/models/decision_tree/boosted_tree/BoostedTreesModel'
 
+
 class Sniffer:
     counter = PacketCounter()
     flow_meter = FlowMeterMetrics(output_mode="flow")
