@@ -1,11 +1,11 @@
-import tensorflow as tf
-from src.metadata.data_columns import columns
+import keras
+from src.metadata.data_columns import columns, columns_normalized
 
 
 class InputLayer:
+
     inputs = {}
-    data = []
-    feature_columns = []
+    features = {}
     num_features = 0
     jit_compile = False
     exclude_features = [
@@ -14,23 +14,20 @@ class InputLayer:
         'timestamp',
         'src_ip',
         'dst_ip',
-        'fwd_seg_size_avg',
-        'bwd_seg_size_avg',
-        'cwe_flag_count',
-        'subflow_fwd_pkts',
-        'subflow_bwd_pkts',
-        'subflow_fwd_byts',
-        'subflow_bwd_byts'
+        #'fwd_seg_size_avg',
+        #'bwd_seg_size_avg',
+        #'cwe_flag_count',
+        #'subflow_fwd_pkts',
+        #'subflow_bwd_pkts',
+        #'subflow_fwd_byts',
+        #'subflow_bwd_byts'
     ]
 
-    def __call__(self):
+    def __init__(self):
 
-        features = list(columns.keys())
+        self.features = {x: y for x, y in columns.items() if x not in self.exclude_features}
 
-        for name in features:
-            if name not in self.exclude_features:
-                self.num_features += 1
-                self.feature_columns.append(tf.feature_column.numeric_column(name))
-                self.inputs[name] = tf.keras.layers.Input(shape=(1, ), name=name)
+        self.num_features = len(self.features)
 
-        return tf.keras.layers.DenseFeatures(feature_columns=self.feature_columns, name='Input')(self.inputs)
+        for key, value in self.features.items():
+            self.inputs[key] = keras.layers.Input(shape=(1, ), name=key,  dtype=value)
