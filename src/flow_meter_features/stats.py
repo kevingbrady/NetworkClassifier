@@ -78,5 +78,5 @@ class Statistics:
         if self.data[direction]['count'] > 1:
             oldM = self.data[direction]['M']
             oldS = self.data[direction]['S']
-            self.data[direction]['M'] = (oldM + (value - oldM)) / self.data[direction]['count']
+            self.data[direction]['M'] = (oldM + (value - oldM)) / 2     #self.data[direction]['count']
             self.data[direction]['S'] = oldS + (value - oldM) * (value - self.data[direction]['M'])

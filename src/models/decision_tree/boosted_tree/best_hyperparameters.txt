@@ -1,0 +1,102 @@
+[INFO 23-04-12 16:58:22.6842 UTC hyperparameters_optimizer.cc:219] Best hyperparameters:
+fields {
+  name: "categorical_algorithm"
+  value {
+    categorical: "CART"
+  }
+}
+fields {
+  name: "use_hessian_gain"
+  value {
+    categorical: "true"
+  }
+}
+fields {
+  name: "shrinkage"
+  value {
+    real: 0.15
+  }
+}
+fields {
+  name: "num_candidate_attributes_ratio"
+  value {
+    real: 0.5
+  }
+}
+fields {
+  name: "split_axis"
+  value {
+    categorical: "AXIS_ALIGNED"
+  }
+}
+fields {
+  name: "growing_strategy"
+  value {
+    categorical: "BEST_FIRST_GLOBAL"
+  }
+}
+fields {
+  name: "max_num_nodes"
+  value {
+    integer: 256
+  }
+}
+
+[INFO 23-04-12 16:58:22.6851 UTC kernel.cc:926] Export model in log directory: /tmp/tmpidvzye8h with prefix 28487607e2d049c3
+[INFO 23-04-12 16:58:22.7237 UTC kernel.cc:944] Save model in resources
+[INFO 23-04-12 16:58:22.9976 UTC abstract_model.cc:849] Model self evaluation:
+Task: CLASSIFICATION
+Label: __LABEL
+Loss (BINOMIAL_LOG_LIKELIHOOD): 1.37131e-07
+
+Accuracy: 1  CI95[W][0 1]
+ErrorRate: : 0
+
+
+Confusion Table:
+truth\prediction
+   0  1       2
+0  0  0       0
+1  0  0       0
+2  0  0  367808
+Total: 367808
+
+One vs other classes:
+
+[INFO 23-04-12 16:58:23.0149 UTC kernel.cc:1242] Loading model from path /tmp/tmpidvzye8h/model/ with prefix 28487607e2d049c3
+[INFO 23-04-12 16:58:23.0995 UTC abstract_model.cc:1311] Engine "GradientBoostedTreesQuickScorerExtended" built
+[INFO 23-04-12 16:58:23.0995 UTC kernel.cc:1074] Use fast generic engine
+Model trained in 1 day, 1:32:36.690460
+Compiling model...
+Model compiled.
+WARNING:absl:Function `_wrapped_model` contains input name(s) No with unsupported characters which will be renamed to no in the SavedModel.
+WARNING:absl:Found untraced functions such as call_get_leaves, _update_step_xla while saving (showing 2 of 2). These functions will not be directly callable after loading.
+          score  evaluation_time  ...   growing_strategy max_num_nodes
+0 -2.293193e-06     47252.567413  ...  BEST_FIRST_GLOBAL            16
+1 -5.447838e-06     47323.342061  ...  BEST_FIRST_GLOBAL            16
+2 -1.108310e-04     47545.862076  ...  BEST_FIRST_GLOBAL            16
+3 -5.905426e-03     47668.069540  ...  BEST_FIRST_GLOBAL            16
+4 -1.371311e-07     50836.763942  ...  BEST_FIRST_GLOBAL           256
+
+[5 rows x 10 columns]
+score                                          -0.0
+evaluation_time                        50836.763942
+best                                           True
+categorical_algorithm                          CART
+use_hessian_gain                               true
+shrinkage                                      0.15
+num_candidate_attributes_ratio                  0.5
+split_axis                             AXIS_ALIGNED
+growing_strategy                  BEST_FIRST_GLOBAL
+max_num_nodes                                   256
+Name: 4, dtype: object
+17/17 [==============================] - 185s 1s/step - loss: 0.0000e+00 - accuracy: 1.0000 - precision: 1.0000 - recall: 1.0000
+
+ Test Loss: 0.000
+ Test Accuracy: 1.000
+ Test Precision: 1.000
+ Test Recall: 1.000
+
+Training Run Time: 25 hrs 38 min 47.00 s
+Evaluation Run Time: 00 hrs 03 min 05.00 s
+Total Run Time: 25 hrs 41 min 54.00 s
