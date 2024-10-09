@@ -1,3 +1,5 @@
+import time
+import simplejson as json
 from enum import Enum
 from typing import Any
 
@@ -10,8 +12,7 @@ from src.flow_meter_features.packet_count import PacketCount
 from src.flow_meter_features.packet_time import PacketTime
 from src.flow_meter_features.packet_length import PacketLength
 from src.flow_meter_features.active_idle import ActiveIdle
-from scapy.layers.inet6 import IPv6
-from scapy.layers.inet import IP, TCP, UDP
+from src.flow_meter_features.packet_bulk import BulkPacketData
 from src.clean_ip import _format_ip
 
 
@@ -33,38 +34,26 @@ class Flow:
             self.dest_port,
         ) = packet_flow_key.get_packet_fields(packet, direction)
 
-        self.latest_timestamp = 0
-        self.start_timestamp = 0
+        self.src_ip_as_int = _format_ip(self.src_ip, "auto", "integer", "raise")
+        self.dest_ip_as_int = _format_ip(self.dest_ip, "auto", "integer", "raise")
+        self.direction = direction
+        self.ack = 0
+        self.protocol = 0
         self.init_window_size = {
             PacketDirection.FORWARD: 0,
             PacketDirection.REVERSE: 0,
         }
 
-        self.forward_bulk_last_timestamp = 0
-        self.forward_bulk_start_tmp = 0
-        self.forward_bulk_count = 0
-        self.forward_bulk_count_tmp = 0
-        self.forward_bulk_duration = 0
-        self.forward_bulk_packet_count = 0
-        self.forward_bulk_size = 0
-        self.forward_bulk_size_tmp = 0
-        self.backward_bulk_last_timestamp = 0
-        self.backward_bulk_start_tmp = 0
-        self.backward_bulk_count = 0
-        self.backward_bulk_count_tmp = 0
-        self.backward_bulk_duration = 0
-        self.backward_bulk_packet_count = 0
-        self.backward_bulk_size = 0
-        self.backward_bulk_size_tmp = 0
-
-        self.flow_bytes = FlowBytes(self)
+        self.flow_bytes = FlowBytes()
+        self.packet_bulk = BulkPacketData()
         self.flag_count = FlagCount()
         self.packet_count = PacketCount()
         self.packet_length = PacketLength()
         self.packet_time = PacketTime()
         self.active_idle = ActiveIdle()
+        self.completed = False
 
-    def get_data(self, packet, direction) -> dict:
+    def get_data(self, direction=None) -> dict:
         """This method obtains the values of the features extracted from each flow.
 
         Note:
@@ -76,45 +65,22 @@ class Flow:
            list: returns a List of values to be outputted into a csv file.
 
         """
-
-        self.packet_time.process_packet(packet, direction)
-        self.flow_bytes.process_packet(packet, direction)
-        self.packet_count.process_packet(packet, direction)
-        self.packet_length.process_packet(packet, direction)
-        self.flag_count.process_packet(packet, direction)
-        self.active_idle.process_packet(packet, direction)
-
-        self.packet_count.duration = self.packet_time.get_duration()
-        self.flow_bytes.duration = self.packet_time.get_duration()
-
-        self.update_flow_bulk(packet, direction)
-        self.set_window_size(packet, direction)
-        self.latest_timestamp = self.packet_time.get_timestamp()
-
-        clean_ip_src = _format_ip(self.src_ip, "auto", "integer", "raise")
-        clean_ip_dst = _format_ip(self.dest_ip, "auto", "integer", "raise")
-
-        ack = 0
-
-        if TCP in packet:
-            ack = packet[TCP].ack
-
         data = {
             # Basic IP information
-            "src_ip": clean_ip_src[0],
-            "dst_ip": clean_ip_dst[0],
+            "src_ip": self.src_ip_as_int[0],
+            "dst_ip": self.dest_ip_as_int[0],
             "src_port": self.src_port,
             "dst_port": self.dest_port,
-            "protocol": self.get_protocol(packet),
-            "pkt_length": len(packet),
-            "info": ack,
+            "protocol": self.protocol,
+            "pkt_length": self.packet_length.packet_lengths[direction],
+            "info": self.ack,
             # Basic information from packet times
-            "timestamp": self.latest_timestamp,
-            "flow_duration": 1e6 * self.packet_time.get_duration(),
-            "flow_byts_s": self.flow_bytes.get_rate(),
-            "flow_pkts_s": self.packet_count.get_rate(),
-            "fwd_pkts_s":self.packet_count.get_rate(PacketDirection.FORWARD),
-            "bwd_pkts_s": self.packet_count.get_rate(PacketDirection.REVERSE),
+            "timestamp": self.packet_time.timestamps[direction]['last_timestamp'],
+            "flow_duration": self.packet_time.get_flow_duration(),
+            "flow_byts_s": self.flow_bytes.get_rate(self.packet_time.get_flow_duration()),
+            "flow_pkts_s": self.packet_count.get_rate(self.packet_time.get_flow_duration()),
+            "fwd_pkts_s":self.packet_count.get_rate(self.packet_time.get_flow_duration(PacketDirection.FORWARD), PacketDirection.FORWARD),
+            "bwd_pkts_s": self.packet_count.get_rate(self.packet_time.get_flow_duration(PacketDirection.REVERSE), PacketDirection.REVERSE),
             # Count total packets by direction
             "tot_fwd_pkts": self.packet_count.get_total(PacketDirection.FORWARD),
             "tot_bwd_pkts": self.packet_count.get_total(PacketDirection.REVERSE),
@@ -179,22 +145,22 @@ class Flow:
             "idle_mean": self.active_idle.idle_stats.get_mean(),
             "idle_std": self.active_idle.idle_stats.get_standard_deviation(),
             "fwd_byts_b_avg": float(
-                self.flow_bytes.get_bytes_per_bulk(PacketDirection.FORWARD)
+                self.packet_bulk.get_bytes_per_bulk(PacketDirection.FORWARD)
             ),
             "fwd_pkts_b_avg": float(
-                self.flow_bytes.get_packets_per_bulk(PacketDirection.FORWARD)
+                self.packet_bulk.get_packets_per_bulk(PacketDirection.FORWARD)
             ),
             "bwd_byts_b_avg": float(
-                self.flow_bytes.get_bytes_per_bulk(PacketDirection.REVERSE)
+                self.packet_bulk.get_bytes_per_bulk(PacketDirection.REVERSE)
             ),
             "bwd_pkts_b_avg": float(
-                self.flow_bytes.get_packets_per_bulk(PacketDirection.REVERSE)
+                self.packet_bulk.get_packets_per_bulk(PacketDirection.REVERSE)
             ),
             "fwd_blk_rate_avg": float(
-                self.flow_bytes.get_bulk_rate(PacketDirection.FORWARD)
+                self.packet_bulk.get_bulk_rate(PacketDirection.FORWARD)
             ),
             "bwd_blk_rate_avg": float(
-                self.flow_bytes.get_bulk_rate(PacketDirection.REVERSE)
+                self.packet_bulk.get_bulk_rate(PacketDirection.REVERSE)
             ),
         }
 
@@ -211,101 +177,19 @@ class Flow:
 
     def set_window_size(self, packet, direction):
 
-        if TCP in packet:
-            if direction == PacketDirection.FORWARD and self.init_window_size[direction] == 0:
-                self.init_window_size[direction] = packet[TCP].window
-            elif direction == PacketDirection.REVERSE:
-                self.init_window_size[direction] = packet[TCP].window
+        if self.init_window_size[direction] == 0:
+            self.init_window_size[direction] = packet['TCP'].window
 
     def get_protocol(self, packet):
 
-        if UDP in packet and IPv6 in packet:
-            protocol = packet[IPv6].nh
+        if self.packet_time.timestamps[None]['first_timestamp'] == 0:
+            if 'TCP' in packet:
+                self.protocol = 6
+            if 'UDP' in packet:
+                self.protocol = 17
 
-        else:
-            protocol = packet[IP].proto
+    def __repr__(self):
 
-        return protocol
+        return json.dumps(self.get_data(), sort_keys=False, indent=4, use_decimal=False)
 
-    def update_flow_bulk(self, packet, direction):
-        """Update bulk flow
 
-        Args:
-            packet: Packet to be parse as bulk
-
-        """
-        payload = PacketCount.get_payload(packet)
-        payload_size = len(payload) if payload != 0 else 0
-
-        if payload_size == 0:
-            return
-        if direction == PacketDirection.FORWARD:
-            if self.backward_bulk_last_timestamp > self.forward_bulk_start_tmp:
-                self.forward_bulk_start_tmp = 0
-            if self.forward_bulk_start_tmp == 0:
-                self.forward_bulk_start_tmp = packet.time
-                self.forward_bulk_last_timestamp = packet.time
-                self.forward_bulk_count_tmp = 1
-                self.forward_bulk_size_tmp = payload_size
-            else:
-                if (
-                    packet.time - self.forward_bulk_last_timestamp
-                ) > constants.CLUMP_TIMEOUT:
-                    self.forward_bulk_start_tmp = packet.time
-                    self.forward_bulk_last_timestamp = packet.time
-                    self.forward_bulk_count_tmp = 1
-                    self.forward_bulk_size_tmp = payload_size
-                else:  # Add to bulk
-                    self.forward_bulk_count_tmp += 1
-                    self.forward_bulk_size_tmp += payload_size
-                    if self.forward_bulk_count_tmp == constants.BULK_BOUND:
-                        self.forward_bulk_count += 1
-                        self.forward_bulk_packet_count += self.forward_bulk_count_tmp
-                        self.forward_bulk_size += self.forward_bulk_size_tmp
-                        self.forward_bulk_duration += (
-                            packet.time - self.forward_bulk_start_tmp
-                        )
-                    elif self.forward_bulk_count_tmp > constants.BULK_BOUND:
-                        self.forward_bulk_packet_count += 1
-                        self.forward_bulk_size += payload_size
-                        self.forward_bulk_duration += (
-                            packet.time - self.forward_bulk_last_timestamp
-                        )
-                    self.forward_bulk_last_timestamp = packet.time
-        else:
-            if self.forward_bulk_last_timestamp > self.backward_bulk_start_tmp:
-                self.backward_bulk_start_tmp = 0
-            if self.backward_bulk_start_tmp == 0:
-                self.backward_bulk_start_tmp = packet.time
-                self.backward_bulk_last_timestamp = packet.time
-                self.backward_bulk_count_tmp = 1
-                self.backward_bulk_size_tmp = payload_size
-            else:
-                if (
-                    packet.time - self.backward_bulk_last_timestamp
-                ) > constants.CLUMP_TIMEOUT:
-                    self.backward_bulk_start_tmp = packet.time
-                    self.backward_bulk_last_timestamp = packet.time
-                    self.backward_bulk_count_tmp = 1
-                    self.backward_bulk_size_tmp = payload_size
-                else:  # Add to bulk
-                    self.backward_bulk_count_tmp += 1
-                    self.backward_bulk_size_tmp += payload_size
-                    if self.backward_bulk_count_tmp == constants.BULK_BOUND:
-                        self.backward_bulk_count += 1
-                        self.backward_bulk_packet_count += self.backward_bulk_count_tmp
-                        self.backward_bulk_size += self.backward_bulk_size_tmp
-                        self.backward_bulk_duration += (
-                            packet.time - self.backward_bulk_start_tmp
-                        )
-                    elif self.backward_bulk_count_tmp > constants.BULK_BOUND:
-                        self.backward_bulk_packet_count += 1
-                        self.backward_bulk_size += payload_size
-                        self.backward_bulk_duration += (
-                            packet.time - self.backward_bulk_last_timestamp
-                        )
-                    self.backward_bulk_last_timestamp = packet.time
-
-    @property
-    def duration(self):
-        return self.latest_timestamp - self.start_timestamp

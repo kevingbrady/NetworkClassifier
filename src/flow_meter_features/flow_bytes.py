@@ -1,11 +1,10 @@
-from scapy.layers.inet import IP, TCP
 from src.flow_meter_features.context.packet_direction import PacketDirection
 
 
 class FlowBytes:
     """Extracts features from the traffic related to the bytes in a flow"""
 
-    def __init__(self, feature):
+    def __init__(self):
 
         self.byte_data = {
             None: {
@@ -28,9 +27,6 @@ class FlowBytes:
             }
         }
 
-        self.duration = 0
-        self.feature = feature
-
     def process_packet(self, packet, direction):
 
         self.byte_data[None]['total_bytes'] += len(packet)
@@ -51,7 +47,10 @@ class FlowBytes:
 
     @staticmethod
     def _header_size(packet):
-        return packet[IP].ihl * 4 if TCP in packet else 8
+
+        if 'TCP' in packet:
+            return 20 + packet['TCP'].dataofs
+        return 8
 
     def get_bytes(self, direction=None) -> int:
         """Calculates the amount bytes being transfered.
@@ -62,7 +61,7 @@ class FlowBytes:
         """
         return self.byte_data[direction]['total_bytes']
 
-    def get_rate(self) -> float:
+    def get_rate(self, duration) -> float:
         """Calculates the rate of the bytes being transfered in the current flow.
 
         Returns:
@@ -70,10 +69,9 @@ class FlowBytes:
 
         """
 
-        if self.duration == 0:
-            rate = 0
-        else:
-            rate = self.get_bytes() / self.duration
+        rate = 0
+        if duration > 0:
+            rate = self.get_bytes() / duration
 
         return rate
 
@@ -86,7 +84,7 @@ class FlowBytes:
         """
         return self.get_bytes(PacketDirection.FORWARD)
 
-    def get_sent_rate(self) -> float:
+    def get_sent_rate(self, duration) -> float:
         """Calculates the rate of the bytes being sent in the current flow.
 
         Returns:
@@ -95,10 +93,9 @@ class FlowBytes:
         """
         sent = self.get_bytes_sent()
 
-        if self.duration == 0:
-            rate = -1
-        else:
-            rate = sent / self.duration
+        rate = 0
+        if duration > 0:
+            rate = sent / duration
 
         return rate
 
@@ -111,7 +108,7 @@ class FlowBytes:
         """
         return self.get_bytes(PacketDirection.REVERSE)
 
-    def get_received_rate(self) -> float:
+    def get_received_rate(self, duration) -> float:
         """Calculates the rate of the bytes being received in the current flow.
 
         Returns:
@@ -120,10 +117,9 @@ class FlowBytes:
         """
         received = self.get_bytes_received()
 
-        if self.duration == 0:
-            rate = -1
-        else:
-            rate = received / self.duration
+        rate = 0
+        if duration > 0:
+            rate = received / duration
 
         return rate
 
@@ -137,7 +133,7 @@ class FlowBytes:
 
         return self.byte_data[PacketDirection.FORWARD]['header_size_sum']
 
-    def get_forward_rate(self) -> int:
+    def get_forward_rate(self, duration) -> int:
         """Calculates the rate of the bytes being going forward
         in the current flow.
 
@@ -147,10 +143,9 @@ class FlowBytes:
         """
         forward = self.get_forward_header_bytes()
 
-        if self.duration > 0:
-            rate = forward / self.duration
-        else:
-            rate = -1
+        rate = 0
+        if duration > 0:
+            rate = forward / duration
 
         return rate
 
@@ -174,7 +169,7 @@ class FlowBytes:
 
         return self.byte_data[PacketDirection.FORWARD]['header_size_min']
 
-    def get_reverse_rate(self) -> int:
+    def get_reverse_rate(self, duration) -> int:
         """Calculates the rate of the bytes being going reverse
         in the current flow.
 
@@ -184,10 +179,9 @@ class FlowBytes:
         """
         reverse = self.get_reverse_header_bytes()
 
-        if self.duration == 0:
-            rate = -1
-        else:
-            rate = reverse / self.duration
+        rate = 0
+        if duration > 0:
+            rate = reverse / duration
 
         return rate
 
@@ -203,48 +197,9 @@ class FlowBytes:
         reverse_header_bytes = self.get_reverse_header_bytes()
         forward_header_bytes = self.get_forward_header_bytes()
 
-        ratio = -1
-        if reverse_header_bytes != 0:
+        ratio = 0
+        if reverse_header_bytes > 0:
             ratio = forward_header_bytes / reverse_header_bytes
 
         return ratio
 
-    def get_bytes_per_bulk(self, packet_direction):
-        if packet_direction == PacketDirection.FORWARD:
-            if self.feature.forward_bulk_count != 0:
-                return self.feature.forward_bulk_size / self.feature.forward_bulk_count
-        else:
-            if self.feature.backward_bulk_count != 0:
-                return (
-                        self.feature.backward_bulk_size / self.feature.backward_bulk_count
-                )
-        return 0
-
-    def get_packets_per_bulk(self, packet_direction):
-        if packet_direction == PacketDirection.FORWARD:
-            if self.feature.forward_bulk_count != 0:
-                return (
-                        self.feature.forward_bulk_packet_count
-                        / self.feature.forward_bulk_count
-                )
-        else:
-            if self.feature.backward_bulk_count != 0:
-                return (
-                        self.feature.backward_bulk_packet_count
-                        / self.feature.backward_bulk_count
-                )
-        return 0
-
-    def get_bulk_rate(self, packet_direction):
-        if packet_direction == PacketDirection.FORWARD:
-            if self.feature.forward_bulk_count != 0 and self.feature.forward_bulk_duration > 0:
-                return (
-                        self.feature.forward_bulk_size / self.feature.forward_bulk_duration
-                )
-        else:
-            if self.feature.backward_bulk_count != 0 and self.feature.backward_bulk_duration > 0:
-                return (
-                        self.feature.backward_bulk_size
-                        / self.feature.backward_bulk_duration
-                )
-        return 0

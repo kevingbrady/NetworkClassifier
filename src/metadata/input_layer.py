@@ -11,9 +11,9 @@ class InputLayer:
     exclude_features = [
         'Target',
         'No',
-        'timestamp',
-        'src_ip',
-        'dst_ip',
+        #'timestamp',
+        #'src_ip',
+        #'dst_ip',
         'fwd_seg_size_avg',
         'bwd_seg_size_avg',
         'cwe_flag_count',

@@ -20,25 +20,23 @@ class PacketCount:
             }
         }
 
-        self.duration = 0
-
     def process_packet(self, packet, direction):
         self.packet_count[None]['count'] += 1
         self.packet_count[direction]['count'] += 1
 
-        self.has_payload(packet, None)
-        self.has_payload(packet, direction)
+        self.set_payload_count(packet)
+        self.set_payload_count(packet, direction)
 
     def get_total(self, direction=None) -> int:
 
         return self.packet_count[direction]['count']
 
-    def get_rate(self, direction=None) -> float:
+    def get_rate(self, duration, direction=None) -> float:
 
-        if self.duration == 0:
+        if duration == 0:
             rate = 0
         else:
-            rate = self.get_total(direction) / self.duration
+            rate = self.get_total(direction) / duration
 
         return rate
 
@@ -61,12 +59,12 @@ class PacketCount:
 
     @staticmethod
     def get_payload(packet):
-        if "TCP" in packet:
+        if 'TCP' in packet:
             return packet["TCP"].payload
-        elif "UDP" in packet:
+        if 'UDP' in packet:
             return packet["UDP"].payload
         return 0
 
-    def has_payload(self, packet, direction=None):
+    def set_payload_count(self, packet, direction=None):
         if len(self.get_payload(packet)) > 0:
             self.packet_count[direction]['payload'] += 1

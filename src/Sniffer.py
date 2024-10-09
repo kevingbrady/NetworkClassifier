@@ -5,6 +5,7 @@ import ydf
 import tensorflow as tf
 import pandas as pd
 import numpy as np
+import json
 from collections import OrderedDict, deque
 
 from scapy.all import *
@@ -26,7 +27,8 @@ class Sniffer:
     counter = PacketCounter()
     flow_meter = FlowMeterMetrics(output_mode="flow")
     normalizer = PacketDataNormalizer()
-    packet_queue = deque(maxlen=200)
+    #packet_queue = deque(maxlen=200)
+    start_time = 0.0
 
     def __init__(self, interfaces=None):
 
@@ -54,7 +56,7 @@ class Sniffer:
             sniffer.join()
 
         except KeyboardInterrupt:
-            elapsed_time = time.time() - self.counter.get_start_time()
+            elapsed_time = time.time() - self.start_time
             print(
                 "\nSniffed %d packets in %s" % (self.counter.get_packet_count_total(), pretty_time_delta(elapsed_time)))
             raise KeyboardInterrupt
@@ -62,7 +64,7 @@ class Sniffer:
     def process_packet(self, pkt):
 
         if self.counter.get_packet_count_total() == 0:
-            self.counter.set_start_time(pkt.time)
+            self.start_time = pkt.time
 
         self.counter.packet_count_total += 1
 
@@ -74,16 +76,25 @@ class Sniffer:
             self.counter.packet_count_preprocessed += 1
 
             flow, direction = self.flow_meter.process_packet(pkt)
-            packet_data = flow.get_data(pkt, direction)
+            packet_data = flow.get_data(direction)
 
-            packet_data = self.normalizer(packet_data, self.counter.packet_count_preprocessed)
+            c = 0
+            results = []
 
-            self.packet_queue.appendleft(
-                {x: np.full((1,), y) for x, y in packet_data.items() if x not in self.input_layer.exclude_features}
-            )
+            for key, flow in self.flow_meter.flows.items():
 
-            if self.counter.get_packet_count_preprocessed() > 1:
+                flow_data = flow.get_data()
+                #print(json.dumps(flow_data, sort_keys=True, indent=4))
+                #flow_data = self.normalizer(flow_data, flow.packet_count.get_total())
+                
+                if flow.packet_count.get_total() >= 5:
+                    c += 1
 
-                input = self.packet_queue[0]
-                results = self.model.predict(input)
-                print(results)
+                    #flow_input = {x: np.full((1,), y) for x, y in flow_data.items() if x not in self.input_layer.exclude_features}
+                    #prediction = self.model.predict(flow_input)
+                    #print("[", flow.src_ip, '(', flow.src_port, ") ------->", flow.dest_ip, '(', flow.dest_port, ')',  flow.get_flow_duration(), direction, flow.packet_count.get_total(), prediction, "]")
+
+            if c >= 1:
+                pas
+                #print(json.dumps(list(self.flow_meter.flows.values())[0].get_data(), sort_keys=False, indent=4))
+                #print('\n\n')
