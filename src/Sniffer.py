@@ -18,10 +18,10 @@ from src.PacketDataNormalizer import PacketDataNormalizer
 from src.metadata.input_layer import InputLayer
 from src.utils import pretty_time_delta, normalize
 
-MODEL_FILEPATH = '/home/kgb/PycharmProjects/TensorFlowPcap/src/models/neural_network/deep_neural_network/DeepNeuralNet'
-#MODEL_FILEPATH = '/home/kgb/PycharmProjects/TensorFlowPcap/src/models/neural_network/logistic_regression/LogisticRegression'
-#MODEL_FILEPATH = '/home/kgb/PycharmProjects/TensorFlowPcap/src/models/decision_tree/random_forest/RandomForestModel'
-#MODEL_FILEPATH = '/home/kgb/PycharmProjects/TensorFlowPcap/src/models/decision_tree/boosted_tree/BoostedTreesModel'
+MODEL_FILEPATH = 'src/models/neural_network/deep_neural_network/DeepNeuralNet'
+#MODEL_FILEPATH = 'src/models/neural_network/logistic_regression/LogisticRegression'
+#MODEL_FILEPATH = 'src/models/decision_tree/random_forest/RandomForestModel'
+#MODEL_FILEPATH = 'src/models/decision_tree/boosted_tree/BoostedTreesModel'
 
 
 class Sniffer:
