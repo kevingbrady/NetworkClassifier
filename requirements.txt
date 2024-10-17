@@ -1,5 +1,7 @@
-tensorflow
+keras
+numpy
+ydf
 tensorflow_decision_forests
-pandas
 scapy
 psutil
+silence-tensorflow

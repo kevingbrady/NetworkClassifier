@@ -164,6 +164,7 @@ class Flow:
             ),
         }
 
+        '''
         # Duplicated features
         data["fwd_seg_size_avg"] = data["fwd_pkt_len_mean"]
         data["bwd_seg_size_avg"] = data["bwd_pkt_len_mean"]
@@ -172,6 +173,7 @@ class Flow:
         data["subflow_bwd_pkts"] = data["tot_bwd_pkts"]
         data["subflow_fwd_byts"] = data["totlen_fwd_pkts"]
         data["subflow_bwd_byts"] = data["totlen_bwd_pkts"]
+        '''
 
         return data
 
@@ -190,6 +192,6 @@ class Flow:
 
     def __repr__(self):
 
-        return json.dumps(self.get_data(), sort_keys=False, indent=4, use_decimal=False)
+        return json.dumps(self.get_data(), sort_keys=False, indent=4, use_decimal=True)
 
 

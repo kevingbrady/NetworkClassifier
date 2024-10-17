@@ -58,7 +58,6 @@ class FlowMeterMetrics:
 
         if not flow.completed:
 
-            #print(packet_json)
             flow.ack = 0
             if 'TCP' in packet:
 
