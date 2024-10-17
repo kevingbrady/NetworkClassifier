@@ -7,7 +7,7 @@ from collections import OrderedDict
 import json
 
 EXPIRED_UPDATE = 120
-GARBAGE_COLLECT_PACKETS = 480
+GARBAGE_COLLECT_PACKETS = 50
 
 
 class FlowMeterMetrics:
@@ -17,7 +17,7 @@ class FlowMeterMetrics:
         self.packet_count_total = 0
         self.output_mode = ''
 
-    def process_packet(self, packet):
+    def process_packet(self, packet, total_packet_count):
 
         direction = PacketDirection.FORWARD
 
@@ -64,6 +64,7 @@ class FlowMeterMetrics:
                 flow.ack = packet['TCP'].ack
                 flow.set_window_size(packet, direction)
 
+            flow.direction = direction
             flow.get_protocol(packet)
             flow.active_idle.process_packet(packet, flow.packet_time.get_latest_timestamp(), direction)
             flow.packet_time.process_packet(packet, direction)
@@ -73,12 +74,14 @@ class FlowMeterMetrics:
             flow.flow_bytes.process_packet(packet, direction)
             flow.flag_count.process_packet(packet, direction)
 
-        if self.packet_count_total % GARBAGE_COLLECT_PACKETS == 0:
+        if total_packet_count % GARBAGE_COLLECT_PACKETS == 0:
             self.garbage_collect(packet.time)
 
         return flow, direction
 
     def garbage_collect(self, latest_time) -> None:
+
+        print('GARBAGE COLLECT')
 
         for key, flow in self.flows.items():
 

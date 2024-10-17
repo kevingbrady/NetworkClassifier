@@ -5,3 +5,4 @@ tensorflow_decision_forests
 scapy
 psutil
 silence-tensorflow
+simplejson

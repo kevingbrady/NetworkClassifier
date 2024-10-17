@@ -1,5 +1,6 @@
 import time
 import simplejson as json
+import hashlib
 from enum import Enum
 from typing import Any
 
@@ -27,12 +28,14 @@ class Flow:
             direction (Enum): The direction the packet is going ove the wire.
         """
 
+        self.key = packet_flow_key.get_packet_fields(packet, direction)
+
         (
             self.dest_ip,
             self.src_ip,
             self.src_port,
             self.dest_port,
-        ) = packet_flow_key.get_packet_fields(packet, direction)
+        ) = self.key
 
         self.src_ip_as_int = _format_ip(self.src_ip, "auto", "integer", "raise")
         self.dest_ip_as_int = _format_ip(self.dest_ip, "auto", "integer", "raise")
@@ -52,6 +55,9 @@ class Flow:
         self.packet_time = PacketTime()
         self.active_idle = ActiveIdle()
         self.completed = False
+        self.prediction = ''
+        self.short_flow_output = ''
+        self.hex = ''
 
     def get_data(self, direction=None) -> dict:
         """This method obtains the values of the features extracted from each flow.
@@ -65,6 +71,7 @@ class Flow:
            list: returns a List of values to be outputted into a csv file.
 
         """
+
         data = {
             # Basic IP information
             "src_ip": self.src_ip_as_int[0],
@@ -193,5 +200,16 @@ class Flow:
     def __repr__(self):
 
         return json.dumps(self.get_data(), sort_keys=False, indent=4, use_decimal=True)
+
+    def get_short_flow_output(self):
+
+        proto = "TCP" if self.protocol == 6 else "UDP" if self.protocol == 17 else '%NA'
+
+        return "[" + str(self.src_ip) + '(' + str(self.src_port) + ") <-------> " + str(self.dest_ip) + '(' + str(self.dest_port) + ') ' + str(
+                    self.packet_time.get_flow_duration()) + ' ' + str(proto) + ' ' + str(self.direction) + ' ' + str(
+                    self.packet_count.get_total()) + ' ' + str(self.prediction) + ']\n'
+
+    def flow_hex(self):
+        return hashlib.sha256(self.__repr__().encode()).hexdigest()
 
 

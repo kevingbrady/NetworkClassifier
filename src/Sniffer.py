@@ -12,6 +12,8 @@ import numpy as np
 import json
 from scapy.all import *
 
+conf.sniff_promisc = False
+
 from src.PacketCounter import PacketCounter
 from src.FlowMeterMetrics import FlowMeterMetrics
 from src.PacketDataNormalizer import PacketDataNormalizer
@@ -35,6 +37,9 @@ class Sniffer:
         self.model = self.load_model(MODEL_FILEPATH)
         self.input_layer = InputLayer()
         self.ifaces = []
+        self.predictions = {}
+        self.display_flow_count = 0
+        self.display_output = ''
 
         if interfaces is None:
             iface_dict = psutil.net_if_stats()
@@ -84,38 +89,30 @@ class Sniffer:
 
                 self.counter.packet_count_preprocessed += 1
 
-                flow, direction = self.flow_meter.process_packet(pkt)
+                flow, direction = self.flow_meter.process_packet(pkt, self.counter.packet_count_total)
                 packet_data = flow.get_data(direction)
 
-                c = 0
-                magic_char = '\033[F'
-                output = ''
                 params = {}
 
-                for key, flow in self.flow_meter.flows.items():
+                if flow.packet_count.get_total() >= 3:
 
-                    flow_data = flow.get_data()
-                    # print(json.dumps(flow_data, sort_keys=True, indent=4))
-                    # flow_data = self.normalizer(flow_data, flow.packet_count.get_total())
+                    flow_input = {x: np.full((1,), y) for x, y in flow.get_data().items() if
+                                  x not in self.input_layer.exclude_features}
+                    if self.model.name in ("DeepNeuralNet", "LogisticRegression"):
+                        params = {
+                            'verbose': 0
+                        }
 
-                    if flow.packet_count.get_total() >= 5:
-                        c += 1
+                    flow.prediction = self.model.predict(flow_input, **params)
 
-                        flow_input = {x: np.full((1,), y) for x, y in flow_data.items() if x not in self.input_layer.exclude_features}
-                        if self.model.name in ("DeepNeuralNet", "LogisticRegression"):
-                            params = {
-                                'verbose': 0
-                            }
+                update = ''.join([flow.get_short_flow_output() for key, flow in self.flow_meter.flows.items() if flow.packet_count.get_total() >= 3])
 
-                        prediction = self.model.predict(flow_input, **params)
-                        output += "[" + str(flow.src_ip) + '(' + str(flow.src_port) + ") <-------> " + str(flow.dest_ip) + '(' + str(flow.dest_port) + ') ' + str(flow.packet_time.get_flow_duration()) + ' ' + str(direction) + ' ' + str(flow.packet_count.get_total()) + ' ' + str(prediction) + ']'
-                        output += '\n'
-
-                if c >= 1:
-
+                if self.display_output != update:
+                    magic_char = '\033[F'
                     os.system('cls||clear')
-                    ret_depth = magic_char * output.count('\n')
-                    print('{}{}'.format(ret_depth, output), flush=True, end='')
-                    print(c, "flows recorded ...")
-                    output = ''
-                    # print(json.dumps(list(self.flow_meter.flows.values())[0].get_data(), sort_keys=False, indent=4))
+                    self.display_output = ''.join([flow.get_short_flow_output() for key, flow in self.flow_meter.flows.items() if flow.packet_count.get_total() >= 3])
+                    self.display_flow_count = self.display_output.count('\n')
+                    ret_depth = magic_char * self.display_flow_count
+
+                    print('{}{}'.format(ret_depth, self.display_output), flush=True, end='')
+                    print(self.display_flow_count, "flows recorded ...")
