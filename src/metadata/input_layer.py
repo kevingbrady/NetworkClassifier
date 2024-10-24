@@ -11,16 +11,10 @@ class InputLayer:
     exclude_features = [
         'Target',
         'No',
+        'key',
         #'timestamp',
         #'src_ip',
-        #'dst_ip',
-        'fwd_seg_size_avg',
-        'bwd_seg_size_avg',
-        'cwe_flag_count',
-        'subflow_fwd_pkts',
-        'subflow_bwd_pkts',
-        'subflow_fwd_byts',
-        'subflow_bwd_byts'
+        #'dst_ip'
     ]
 
     def __init__(self):

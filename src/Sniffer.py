@@ -20,10 +20,10 @@ from src.PacketDataNormalizer import PacketDataNormalizer
 from src.metadata.input_layer import InputLayer
 from src.utils import pretty_time_delta, normalize
 
-MODEL_FILEPATH = 'src/models/neural_network/deep_neural_network/DeepNeuralNet'
+#MODEL_FILEPATH = 'src/models/neural_network/deep_neural_network/DeepNeuralNet'
 #MODEL_FILEPATH = 'src/models/neural_network/logistic_regression/LogisticRegression'
 #MODEL_FILEPATH = 'src/models/decision_tree/random_forest/RandomForestModel'
-#MODEL_FILEPATH = 'src/models/decision_tree/boosted_tree/BoostedTreesModel'
+MODEL_FILEPATH = 'src/models/decision_tree/boosted_tree/BoostedTreesModel'
 
 
 class Sniffer:
@@ -89,7 +89,7 @@ class Sniffer:
 
                 self.counter.packet_count_preprocessed += 1
 
-                flow, direction = self.flow_meter.process_packet(pkt, self.counter.packet_count_total)
+                flow, direction = self.flow_meter.process_packet(pkt)
                 packet_data = flow.get_data(direction)
 
                 params = {}
@@ -98,6 +98,7 @@ class Sniffer:
 
                     flow_input = {x: np.full((1,), y) for x, y in flow.get_data().items() if
                                   x not in self.input_layer.exclude_features}
+                    #print(flow_input)
                     if self.model.name in ("DeepNeuralNet", "LogisticRegression"):
                         params = {
                             'verbose': 0

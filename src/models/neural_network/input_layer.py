@@ -7,7 +7,7 @@ class CustomInputLayer:
     feature_columns = []
     num_features = 0
     jit_compile = False
-    exclude_features = ['No', 'Target', 'timestamp', 'src_ip', 'dst_ip']
+    exclude_features = ['No', 'key', 'Target', 'timestamp', 'src_ip', 'dst_ip']
 
     def __call__(self, manager):
 

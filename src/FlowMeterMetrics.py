@@ -1,5 +1,4 @@
 from src.flow_meter_features.context.packet_direction import PacketDirection
-from src.flow_meter_features.context.packet_flow_key import get_packet_flow_key
 from src.improved_flow import Flow
 #from scapy.layers.inet import TCP
 from collections import OrderedDict
@@ -7,7 +6,7 @@ from collections import OrderedDict
 import json
 
 EXPIRED_UPDATE = 120
-GARBAGE_COLLECT_PACKETS = 50
+GARBAGE_COLLECT_PACKETS = 480
 
 
 class FlowMeterMetrics:
@@ -17,11 +16,11 @@ class FlowMeterMetrics:
         self.packet_count_total = 0
         self.output_mode = ''
 
-    def process_packet(self, packet, total_packet_count):
+    def process_packet(self, packet):
 
         direction = PacketDirection.FORWARD
 
-        packet_flow_key = get_packet_flow_key(packet, direction)
+        packet_flow_key = Flow.get_packet_flow_key(packet, direction)
         flow = self.flows.get(packet_flow_key)
         self.packet_count_total += 1
 
@@ -29,14 +28,14 @@ class FlowMeterMetrics:
         if flow is None:
             # There might be one of it in reverse
             direction = PacketDirection.REVERSE
-            packet_flow_key = get_packet_flow_key(packet, direction)
+            packet_flow_key = Flow.get_packet_flow_key(packet, direction)
             flow = self.flows.get(packet_flow_key)
 
         if flow is None:
             # If no flow exists create a new flow
             direction = PacketDirection.FORWARD
             flow = Flow(packet, direction)
-            packet_flow_key = get_packet_flow_key(packet, direction)
+            packet_flow_key = Flow.get_packet_flow_key(packet, direction)
             self.flows[packet_flow_key] = flow
 
         if (packet.time - flow.packet_time.get_latest_timestamp()) > EXPIRED_UPDATE:
@@ -59,12 +58,12 @@ class FlowMeterMetrics:
         if not flow.completed:
 
             flow.ack = 0
+
             if 'TCP' in packet:
 
                 flow.ack = packet['TCP'].ack
                 flow.set_window_size(packet, direction)
 
-            flow.direction = direction
             flow.get_protocol(packet)
             flow.active_idle.process_packet(packet, flow.packet_time.get_latest_timestamp(), direction)
             flow.packet_time.process_packet(packet, direction)
@@ -74,14 +73,14 @@ class FlowMeterMetrics:
             flow.flow_bytes.process_packet(packet, direction)
             flow.flag_count.process_packet(packet, direction)
 
-        if total_packet_count % GARBAGE_COLLECT_PACKETS == 0:
+        if self.packet_count_total % GARBAGE_COLLECT_PACKETS == 0:
             self.garbage_collect(packet.time)
+
+        self.flows = OrderedDict(sorted(self.flows.items(), key=lambda kv: kv[1].packet_count.get_total(), reverse=True))
 
         return flow, direction
 
     def garbage_collect(self, latest_time) -> None:
-
-        print('GARBAGE COLLECT')
 
         for key, flow in self.flows.items():
 
