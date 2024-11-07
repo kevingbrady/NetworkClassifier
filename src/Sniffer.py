@@ -19,11 +19,12 @@ from src.FlowMeterMetrics import FlowMeterMetrics
 from src.PacketDataNormalizer import PacketDataNormalizer
 from src.metadata.input_layer import InputLayer
 from src.utils import pretty_time_delta, normalize
+from collections import OrderedDict
 
-#MODEL_FILEPATH = 'src/models/neural_network/deep_neural_network/DeepNeuralNet'
+MODEL_FILEPATH = 'src/models/neural_network/deep_neural_network/DeepNeuralNet'
 #MODEL_FILEPATH = 'src/models/neural_network/logistic_regression/LogisticRegression'
 #MODEL_FILEPATH = 'src/models/decision_tree/random_forest/RandomForestModel'
-MODEL_FILEPATH = 'src/models/decision_tree/boosted_tree/BoostedTreesModel'
+#MODEL_FILEPATH = 'src/models/decision_tree/boosted_tree/BoostedTreesModel'
 
 
 class Sniffer:
@@ -98,7 +99,7 @@ class Sniffer:
 
                     flow_input = {x: np.full((1,), y) for x, y in flow.get_data().items() if
                                   x not in self.input_layer.exclude_features}
-                    #print(flow_input)
+                    # print(flow_input)
                     if self.model.name in ("DeepNeuralNet", "LogisticRegression"):
                         params = {
                             'verbose': 0
@@ -106,14 +107,16 @@ class Sniffer:
 
                     flow.prediction = self.model.predict(flow_input, **params)
 
-                update = ''.join([flow.get_short_flow_output() for key, flow in self.flow_meter.flows.items() if flow.packet_count.get_total() >= 3])
+                # update = ''.join([flow.get_short_flow_output() for key, flow in self.flow_meter.flows.items() if flow.packet_count.get_total() >= 3])
 
-                if self.display_output != update:
-                    magic_char = '\033[F'
-                    os.system('cls||clear')
-                    self.display_output = ''.join([flow.get_short_flow_output() for key, flow in self.flow_meter.flows.items() if flow.packet_count.get_total() >= 3])
-                    self.display_flow_count = self.display_output.count('\n')
-                    ret_depth = magic_char * self.display_flow_count
+                # if self.display_output != update:
+                magic_char = '\033[F'
+                os.system('cls||clear')
+                self.display_output = ''.join(
+                    [flow.get_short_flow_output() for key, flow in self.flow_meter.flows.items() if
+                     flow.packet_count.get_total() >= 3])
+                self.display_flow_count = self.display_output.count('\n')
+                ret_depth = magic_char * self.display_flow_count
 
-                    print('{}{}'.format(ret_depth, self.display_output), flush=True, end='')
-                    print(self.display_flow_count, "flows recorded ...")
+                print('{}{}'.format(ret_depth, self.display_output), flush=True, end='')
+                print(self.display_flow_count, "flows recorded ...")

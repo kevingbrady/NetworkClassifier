@@ -3,9 +3,8 @@ import numpy as np
 
 # Types for Non normalized data
 columns = {
-    'No': np.int32,
-    'src_ip': np.int64,
-    'dst_ip': np.int64,
+    'src_ip': np.str_,
+    'dst_ip': np.str_,
     'src_port': np.int32,
     'dst_port': np.int32,
     'protocol': np.int32,
